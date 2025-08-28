@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>日文單字測驗（PWA）</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0ea5e9">
+  <style>
+    :root { --bg:#0ea5e9; --fg:#0b1324; --muted:#6b7280; --card:#ffffff; --bd:#e5e7eb; --ok:#22c55e; --bad:#ef4444; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "Helvetica Neue", Arial; margin: 0 auto; max-width: 880px; padding: 16px; background:#f8fafc; color:var(--fg); }
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    h1 { font-size: 20px; margin: 8px 0; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .card { border:1px solid var(--bd); border-radius:14px; padding:16px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.05); margin-top:12px;}
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center }
+    input[type="number"] { width: 90px; padding:8px 10px; border-radius:10px; border:1px solid var(--bd); }
+    input[type="file"] { padding:6px 0; }
+    button { padding:10px 14px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer }
+    button.primary { background:var(--bg); color:#fff; border-color:var(--bg) }
+    button.danger { background:#fff0f0; color:#b91c1c; border-color:#fecaca }
+    button:disabled { opacity:.55; cursor:not-allowed }
+    .opt { display:block; padding:12px 14px; border:1px solid var(--bd); border-radius:12px; margin:10px 0; background:#fff; }
+    .opt.correct { border-color:var(--ok); background:#ecfdf5; }
+    .opt.wrong { border-color:var(--bad); background:#fef2f2; }
+    .seg { display:inline-flex; border:1px solid var(--bd); border-radius:12px; overflow:hidden }
+    .seg button { border:0; padding:8px 12px; }
+    .seg button.active { background:#eef6ff; border-color:#bfdbfe }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:8px 10px; border-bottom:1px solid var(--bd); text-align:left; font-size:14px }
+    th { background:#f3f4f6; }
+    .hidden { display:none !important; }
+    .pill { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--bd); background:#fff }
+    .right { text-align:right }
+    @media (hover:hover) { .opt:hover { transform: translateY(-1px); transition: .15s; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>日文單字測驗（PWA）</h1>
+      <div class="muted">上傳 <code>Vocabulary.xlsx</code> 後即可開始；支援離線、可加入主畫面。</div>
+    </div>
+    <div class="seg" role="tablist" aria-label="視圖切換">
+      <button id="tab-quiz" class="active" aria-selected="true">測驗</button>
+      <button id="tab-stats" aria-selected="false">成績</button>
+    </div>
+  </header>
+
+  <section class="card" id="controls">
+    <div class="row" style="align-items:flex-end">
+      <div>
+        <div class="muted">上傳題庫</div>
+        <input type="file" id="file" accept=".xlsx,.xls" />
+      </div>
+      <div>
+        <div class="muted">題數</div>
+        <input type="number" id="numQ" min="1" max="200" value="21">
+      </div>
+      <div>
+        <div class="muted">題型</div>
+        <div class="seg">
+          <button id="mode-both" class="active" title="讀音 + 中→日">讀音+中→日</button>
+          <button id="mode-zh2jp" title="只中→日">只中→日</button>
+          <button id="mode-pron" title="只讀音">只讀音</button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btnStart" class="primary" disabled>開始測驗</button>
+        <button id="btnReset" class="danger">清除本機成績</button>
+        <button id="btnExportXLSX">下載更新後的 XLSX</button>
+        <button id="btnExportCSV">下載成績 CSV</button>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:8px">
+      必要欄位：單字、讀音、中文解釋、作答次數、正確次數、正確率。統計存於本機（LocalStorage）。
+    </div>
+  </section>
+
+  <section id="quiz" class="card">
+    <div id="qmeta" class="muted" style="margin-bottom:8px">
+      <span id="qtype" class="pill">題型</span>
+      <span id="progress" class="pill">進度</span>
+    </div>
+    <div id="qstem" style="font-size:20px; font-weight:700; margin-bottom:8px">請先載入題庫</div>
+    <div id="opts"></div>
+  </section>
+
+  <section id="stats" class="card hidden" aria-live="polite">
+    <h2 style="margin:0 0 8px 0; font-size:18px">成績檢視</h2>
+    <div class="muted" style="margin-bottom:8px">依「正確率」由低到高排序；可用來找出易錯單字。</div>
+    <div id="stats-summary" class="row" style="gap:8px; margin-bottom:8px"></div>
+    <div style="overflow:auto">
+      <table id="stats-table">
+        <thead>
+          <tr>
+            <th>中文解釋</th><th>日文/讀音</th><th class="right">作答</th>
+            <th class="right">正確</th><th class="right">錯誤</th><th class="right">正確率%</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 讀/寫 xlsx 的外掛（CDN） -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    // ====== 全域狀態 ======
+    let rows = [];                      // 題庫
+    let asked = 0, total = 21;          // 目標題數
+    let mode = "both";                  // 題型模式
+    const ALPHA = 0.8, BETA = 0.6;      // 權重
+    const KEY_STATS = "jp_quiz_stats_v1";
+
+    function loadStats(){ try{ return JSON.parse(localStorage.getItem(KEY_STATS)||"{}"); }catch{return {}} }
+    function saveStats(obj){ localStorage.setItem(KEY_STATS, JSON.stringify(obj)); }
+    function resetStats(){ localStorage.removeItem(KEY_STATS); }
+
+    // ====== UI 元件 ======
+    const btnStart = document.getElementById('btnStart');
+    const btnReset = document.getElementById('btnReset');
+    const btnExportXLSX = document.getElementById('btnExportXLSX');
+    const btnExportCSV = document.getElementById('btnExportCSV');
+    const iptNum = document.getElementById('numQ');
+    const qBox = document.getElementById('quiz'), stem = document.getElementById('qstem'),
+          qtype= document.getElementById('qtype'), opts = document.getElementById('opts'),
+          prog = document.getElementById('progress');
+    const tabQuiz = document.getElementById('tab-quiz');
+    const tabStats= document.getElementById('tab-stats');
+    const modeBoth= document.getElementById('mode-both');
+    const modeZh2jp=document.getElementById('mode-zh2jp');
+    const modePron=document.getElementById('mode-pron');
+
+    // ====== 事件 ======
+    document.getElementById('file').addEventListener('change', async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, {defval:""});
+      normalizeRows();
+      asked = 0;
+      btnStart.disabled = rows.length === 0;
+      renderStats();
+      alert(`已載入 ${rows.length} 筆。`);
+    });
+
+    iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||21)); total = v; iptNum.value = v; };
+    btnStart.onclick = () => { asked=0; nextQuestion(); switchTab('quiz'); };
+    btnReset.onclick = () => { resetStats(); renderStats(); alert("已清除本機成績。"); };
+    btnExportCSV.onclick = exportCSV;
+    btnExportXLSX.onclick = exportXLSX;
+
+    modeBoth.onclick = () => setMode('both');
+    modeZh2jp.onclick = () => setMode('zh2jp');
+    modePron.onclick = () => setMode('pron');
+
+    tabQuiz.onclick = () => switchTab('quiz');
+    tabStats.onclick = () => { renderStats(); switchTab('stats'); };
+
+    function setMode(m){
+      mode = m;
+      [modeBoth, modeZh2jp, modePron].forEach(b=>b.classList.remove('active'));
+      (m==='both'?modeBoth:(m==='zh2jp'?modeZh2jp:modePron)).classList.add('active');
+    }
+    function switchTab(t){
+      if (t==='quiz'){ tabQuiz.classList.add('active'); tabStats.classList.remove('active');
+        document.getElementById('stats').classList.add('hidden'); qBox.classList.remove('hidden');
+      } else {
+        tabStats.classList.add('active'); tabQuiz.classList.remove('active');
+        qBox.classList.add('hidden'); document.getElementById('stats').classList.remove('hidden');
+      }
+    }
+
+    // ====== 資料處理 ======
+    function normalizeRows(){
+      rows = rows.map(r=>{
+        const word = String(r["單字"]||"").trim();
+        const pron = String(r["讀音"]||"").trim();
+        const zh   = String(r["中文解釋"]||"").trim();
+        const ansC = Number(r["作答次數"]||0)|0;
+        const corC = Number(r["正確次數"]||0)|0;
+        const acc  = Number(r["正確率"]||0);
+        const surface = word.length?word:pron;
+        return { 單字:word, 讀音:pron, 中文解釋:zh, 作答次數:ansC, 正確次數:corC, 正確率:acc, surface };
+      }).filter(r=> r.surface && r["中文解釋"]);
+    }
+
+    function hasKanji(s){ return /[\u4E00-\u9FFF]/.test(s||""); }
+
+    function weights(cands){
+      const s = loadStats();
+      const w = cands.map(r=>{
+        const key = statKey(r);
+        const inS = s[key];
+        const ans = (inS?.作答次數 ?? r.作答次數) + 1;
+        const acc = (inS?.正確率 ?? r.正確率)/100;
+        return Math.pow(ans, -0.8) * Math.pow(1-acc, 0.6);
+      });
+      const sum = w.reduce((a,b)=>a+b,0)||1;
+      return w.map(x=>x/sum);
+    }
+
+    function pick(cands){
+      const ws = weights(cands);
+      let r = Math.random(), cum=0;
+      for (let i=0;i<cands.length;i++){ cum+=ws[i]; if (r<=cum) return cands[i]; }
+      return cands[cands.length-1];
+    }
+
+    function statKey(r){ return `${r["中文解釋"]}__${r["單字"]}__${r["讀音"]}`; }
+
+    // ====== 出題流程 ======
+    function nextQuestion(){
+      if (!rows.length){ stem.textContent = "請先載入題庫"; return; }
+      if (asked >= total){ stem.textContent = "測驗結束。請到『成績』查看統計。"; opts.innerHTML=""; return; }
+
+      const cands = rows.filter(r=> r.surface && r["中文解釋"]);
+      if (!cands.length){ stem.textContent = "題庫為空"; opts.innerHTML=""; return; }
+
+      let rec = pick(cands), retry=0;
+      const s = loadStats();
+      while (((s[statKey(rec)]?.正確率 ?? rec.正確率) >= 90) && retry<8){
+        rec = pick(cands); retry++;
+      }
+
+      // 題型決定
+      let types = [];
+      if (mode==='both' || mode==='pron'){
+        if (hasKanji(rec["單字"]) && rec["讀音"]) types.push('讀音');
+      }
+      if (mode==='both' || mode==='zh2jp') types.push('中文->日文');
+
+      asked++;
+      presentCard(rec, types);
+    }
+
+    function choiceOptions(pool, correct, k=4){
+      const uniq = [...new Set(pool.filter(x=>x && x!==correct))];
+      const n = Math.min(k, uniq.length);
+      const wrongs = [];
+      while (wrongs.length < n){
+        const x = uniq[Math.floor(Math.random()*uniq.length)];
+        if (!wrongs.includes(x)) wrongs.push(x);
+      }
+      return [...wrongs, correct].sort(()=>Math.random()-0.5);
+    }
+
+    function presentCard(rec, types){
+      let allCorrect = true;
+
+      const doOne = (qi) => {
+        if (qi >= types.length){
+          const s = loadStats();
+          const key = statKey(rec);
+          const ans = (s[key]?.作答次數 ?? rec.作答次數) + 1;
+          const cor = (s[key]?.正確次數 ?? rec.正確次數) + (allCorrect?1:0);
+          s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans? (cor/ans*100):0 };
+          saveStats(s);
+          setTimeout(nextQuestion, 650);
+          return;
+        }
+
+        const t = types[qi];
+        let correct, pool, prompt;
+        if (t==='讀音'){
+          correct = String(rec["讀音"]);
+          pool = rows.map(x=>String(x["讀音"]));
+          prompt = `請選出「${rec["單字"]}」的正確讀音：`;
+        } else {
+          correct = String(rec["surface"]);
+          pool = rows.map(x=>String(x["surface"]));
+          prompt = `請選出「${rec["中文解釋"]}」對應的正確日文：`;
+        }
+
+        qtype.textContent = `題型：${t}`;
+        prog.textContent  = `進度：第 ${asked}/${total} 題`;
+        stem.textContent  = prompt;
+        opts.innerHTML = "";
+        const options = choiceOptions(pool, correct, 4);
+        options.forEach(opt => {
+          const btn = document.createElement('button');
+          btn.className = 'opt';
+          btn.textContent = opt;
+          btn.onclick = () => {
+            const ok = String(opt)===String(correct);
+            btn.classList.add(ok?'correct':'wrong');
+            Array.from(opts.children).forEach(b=> b.disabled=true);
+            if (!ok) allCorrect=false;
+            setTimeout(()=> doOne(qi+1), 650);
+          };
+          opts.appendChild(btn);
+        });
+      };
+      doOne(0);
+    }
+
+    // ====== 成績檢視 / 匯出 ======
+    function mergedStatsRows(){
+      const s = loadStats();
+      return rows.map(r=>{
+        const key = statKey(r);
+        const ans = s[key]?.作答次數 ?? r.作答次數;
+        const cor = s[key]?.正確次數 ?? r.正確次數;
+        const acc = s[key]?.正確率 ?? r.正確率;
+        const wrong = Math.max(0, ans - cor);
+        return { ...r, 作答次數: ans, 正確次數: cor, 錯誤次數: wrong, 正確率: acc };
+      });
+    }
+
+    function renderStats(){
+      const data = mergedStatsRows().sort((a,b)=> (a.正確率 - b.正確率) || (b.作答次數 - a.作答次數));
+      const tb = document.querySelector('#stats-table tbody');
+      tb.innerHTML = "";
+      for (const r of data){
+        const tr = document.createElement('tr');
+        tr.innerHTML = [
+          `<td>${escapeHtml(r["中文解釋"])}</td>`,
+          `<td>${escapeHtml(r["surface"]||r["讀音"])}</td>`,
+          `<td class="right">${r["作答次數"]}</td>`,
+          `<td class="right">${r["正確次數"]}</td>`,
+          `<td class="right">${r["錯誤次數"]}</td>`,
+          `<td class="right">${(Number(r["正確率"])||0).toFixed(2)}</td>`
+        ].join("");
+        tb.appendChild(tr);
+      }
+
+      const totalAns = data.reduce((s,r)=>s + (Number(r["作答次數"])||0), 0);
+      const totalCor = data.reduce((s,r)=>s + (Number(r["正確次數"])||0), 0);
+      const totalAcc = totalAns? (totalCor/totalAns*100):0;
+      document.getElementById('stats-summary').innerHTML = `
+        <span class="pill">總作答：${totalAns}</span>
+        <span class="pill">總正確：${totalCor}</span>
+        <span class="pill">總正確率：${totalAcc.toFixed(2)}%</span>
+        <span class="pill">單字數：${rows.length}</span>`;
+    }
+
+    function exportCSV(){
+      const arr = [["中文解釋","單字","讀音","作答次數","正確次數","錯誤次數","正確率"]];
+      for (const r of mergedStatsRows()){
+        arr.push([r["中文解釋"], r["單字"], r["讀音"], r["作答次數"], r["正確次數"], r["錯誤次數"], Number(r["正確率"]||0).toFixed(2)]);
+      }
+      const csv = arr.map(row=> row.map(String).map(x=> x.includes(",")||x.includes('"') ? `"${x.replace(/"/g,'""')}"` : x).join(",")).join("\n");
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = "quiz_stats.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function exportXLSX(){
+      const data = mergedStatsRows().map(r=>{
+        const { surface, ...rest } = r; // 不輸出 surface 欄
+        return rest;
+      });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Sheet1");
+      XLSX.writeFile(wb, "Vocabulary_updated.xlsx");
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // PWA
+    if ('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
