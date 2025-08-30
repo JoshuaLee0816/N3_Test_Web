@@ -267,9 +267,8 @@
     }
 
 
-    // 取代整個 presentCard(rec, types)
     function presentCard(rec, types){
-      let allCorrect = true;   // 本題（同一張卡，可能有兩小題）是否全對
+      let allCorrect = true;   // 本題是否全對
 
       const doOne = (qi) => {
         // ==== 小題都作完：更新統計 &（若有錯）記錄本回合錯題 ====
@@ -281,7 +280,6 @@
           s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans ? (cor/ans*100) : 0 };
           saveStats(s);
 
-          // 若你有加 sessionWrongs（本回合錯題清單），這裡記錄
           if (typeof sessionWrongs !== "undefined" && !allCorrect){
             sessionWrongs.push({
               中文解釋: rec["中文解釋"],
@@ -315,7 +313,7 @@
         stem.textContent  = prompt;
         opts.innerHTML    = "";
 
-        // 取得選項（使用已修改過的 choiceOptions(pool, correct, pos, k)）
+        // 取得選項
         const options = choiceOptions(pool, correct, rec["詞性"], 4);
 
         options.forEach(opt => {
@@ -329,7 +327,7 @@
             Array.from(opts.children).forEach(b => b.disabled = true);
 
             if (!ok){
-              // 標記本題有錯，顯示正解，並由使用者按「下一題」才前進
+              // 標記本題有錯，顯示正解，並由使用者按下一題才前進
               allCorrect = false;
 
               const ansDiv = document.createElement('div');
