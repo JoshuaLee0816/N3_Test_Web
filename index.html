@@ -114,6 +114,8 @@
     const ALPHA = 0.8, BETA = 0.6;      // 權重
     const KEY_STATS = "jp_quiz_stats_v1";
 
+    let sessionWrongs = []; // 本回合錯題清單
+
     function loadStats(){ try{ return JSON.parse(localStorage.getItem(KEY_STATS)||"{}"); }catch{return {}} }
     function saveStats(obj){ localStorage.setItem(KEY_STATS, JSON.stringify(obj)); }
     function resetStats(){ localStorage.removeItem(KEY_STATS); }
@@ -148,7 +150,13 @@
     });
 
     iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||21)); total = v; iptNum.value = v; };
-    btnStart.onclick = () => { asked=0; nextQuestion(); switchTab('quiz'); };
+    btnStart.onclick = () => {
+      asked = 0;
+      sessionWrongs = [];          // 重置
+      nextQuestion();
+      switchTab('quiz');
+    };
+
     btnReset.onclick = () => { resetStats(); renderStats(); alert("已清除本機成績。"); };
     btnExportCSV.onclick = exportCSV;
     btnExportXLSX.onclick = exportXLSX;
@@ -218,21 +226,17 @@
     function nextQuestion(){
       if (!rows.length){ stem.textContent = "請先載入題庫"; return; }
       if (asked >= total){
-        const s = loadStats();
-        const wrongs = rows.filter(r=>{
-          const key = statKey(r);
-          const ans = s[key]?.作答次數 ?? r.作答次數;
-          const cor = s[key]?.正確次數 ?? r.正確次數;
-          return ans>0 && cor<ans;
-        });
-        stem.textContent = "測驗結束。以下是錯題回顧：";
-        opts.innerHTML = wrongs.map(r =>
+        stem.textContent = sessionWrongs.length
+          ? "測驗結束。以下是本回合的錯題回顧："
+          : "測驗結束。本回合全對！";
+        opts.innerHTML = sessionWrongs.map(r =>
           `<div style="margin:6px 0; padding:6px; border:1px solid #eee; border-radius:8px">
-            <b>${r["中文解釋"]}</b> → ${r["單字"]}（${r["讀音"]}）
+            <b>${escapeHtml(r.中文解釋)}</b> → ${escapeHtml(r.單字 || "")}${r.讀音 ? `（${escapeHtml(r.讀音)}）` : ""}
           </div>`
         ).join("");
         return;
       }
+
 
       const cands = rows.filter(r=> r.surface && r["中文解釋"]);
       if (!cands.length){ stem.textContent = "題庫為空"; opts.innerHTML=""; return; }
@@ -272,15 +276,26 @@
 
       const doOne = (qi) => {
         if (qi >= types.length){
+          // 如果題有錯，記錄到本回合清單
+          if (!allCorrect) {
+            sessionWrongs.push({
+              中文解釋: rec["中文解釋"],
+              單字: rec["單字"],
+              讀音: rec["讀音"]
+            });
+          }
+
           const s = loadStats();
           const key = statKey(rec);
           const ans = (s[key]?.作答次數 ?? rec.作答次數) + 1;
           const cor = (s[key]?.正確次數 ?? rec.正確次數) + (allCorrect?1:0);
           s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans? (cor/ans*100):0 };
           saveStats(s);
+
           setTimeout(nextQuestion, 650);
           return;
         }
+
 
         const t = types[qi];
         let correct, pool, prompt;
@@ -311,14 +326,26 @@
             Array.from(opts.children).forEach(b=> b.disabled=true);
 
             // 答錯即顯示正解
-            if (!ok){
-              const ansDiv = document.createElement('div');
-              ansDiv.style.marginTop = "6px";
-              ansDiv.style.color = "#b91c1c";
-              ansDiv.textContent = `正確答案：${correct}`;
-              opts.appendChild(ansDiv);
-            }
-            setTimeout(()=> doOne(qi+1), 1200);
+            if (!ok) {
+            // 顯示正解
+            const ansDiv = document.createElement('div');
+            ansDiv.style.marginTop = "6px";
+            ansDiv.style.color = "#b91c1c";
+            ansDiv.textContent = `正確答案：${correct}`;
+            opts.appendChild(ansDiv);
+
+            // 只在「答錯」時出現的「下一題」按鈕
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'opt';          // 讓樣式一致
+            nextBtn.textContent = '下一題';
+            nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
+            opts.appendChild(nextBtn);
+
+            //  答錯時「不要」自動前進（移除原本的 setTimeout）
+          } else {
+            // 答對維持自動前進
+            setTimeout(() => doOne(qi + 1), 650);
+          }
           };
           opts.appendChild(btn);
         });
