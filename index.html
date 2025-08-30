@@ -183,8 +183,10 @@
         const ansC = Number(r["作答次數"]||0)|0;
         const corC = Number(r["正確次數"]||0)|0;
         const acc  = Number(r["正確率"]||0);
+        const pos  = String(r["詞性"]||"").trim();  // ← 新增
         const surface = word.length?word:pron;
-        return { 單字:word, 讀音:pron, 中文解釋:zh, 作答次數:ansC, 正確次數:corC, 正確率:acc, surface };
+        return { 單字:word, 讀音:pron, 中文解釋:zh, 作答次數:ansC, 正確次數:corC,
+                正確率:acc, surface, 詞性:pos };
       }).filter(r=> r.surface && r["中文解釋"]);
     }
 
@@ -215,7 +217,22 @@
     // ====== 出題流程 ======
     function nextQuestion(){
       if (!rows.length){ stem.textContent = "請先載入題庫"; return; }
-      if (asked >= total){ stem.textContent = "測驗結束。請到『成績』查看統計。"; opts.innerHTML=""; return; }
+      if (asked >= total){
+        const s = loadStats();
+        const wrongs = rows.filter(r=>{
+          const key = statKey(r);
+          const ans = s[key]?.作答次數 ?? r.作答次數;
+          const cor = s[key]?.正確次數 ?? r.正確次數;
+          return ans>0 && cor<ans;
+        });
+        stem.textContent = "測驗結束。以下是錯題回顧：";
+        opts.innerHTML = wrongs.map(r =>
+          `<div style="margin:6px 0; padding:6px; border:1px solid #eee; border-radius:8px">
+            <b>${r["中文解釋"]}</b> → ${r["單字"]}（${r["讀音"]}）
+          </div>`
+        ).join("");
+        return;
+      }
 
       const cands = rows.filter(r=> r.surface && r["中文解釋"]);
       if (!cands.length){ stem.textContent = "題庫為空"; opts.innerHTML=""; return; }
@@ -237,8 +254,9 @@
       presentCard(rec, types);
     }
 
-    function choiceOptions(pool, correct, k=4){
-      const uniq = [...new Set(pool.filter(x=>x && x!==correct))];
+    function choiceOptions(pool, correct, pos, k=4){
+      const samePOS = pool.filter(x => x.詞性 === pos).map(x => x.value);
+      const uniq = [...new Set(samePOS.filter(x=>x && x!==correct))];
       const n = Math.min(k, uniq.length);
       const wrongs = [];
       while (wrongs.length < n){
@@ -247,6 +265,7 @@
       }
       return [...wrongs, correct].sort(()=>Math.random()-0.5);
     }
+
 
     function presentCard(rec, types){
       let allCorrect = true;
@@ -265,13 +284,14 @@
 
         const t = types[qi];
         let correct, pool, prompt;
+
         if (t==='讀音'){
           correct = String(rec["讀音"]);
-          pool = rows.map(x=>String(x["讀音"]));
+          pool = rows.map(x=>({value:String(x["讀音"]), 詞性:x["詞性"]}));
           prompt = `請選出「${rec["單字"]}」的正確讀音：`;
         } else {
           correct = String(rec["surface"]);
-          pool = rows.map(x=>String(x["surface"]));
+          pool = rows.map(x=>({value:String(x["surface"]), 詞性:x["詞性"]}));
           prompt = `請選出「${rec["中文解釋"]}」對應的正確日文：`;
         }
 
@@ -279,7 +299,8 @@
         prog.textContent  = `進度：第 ${asked}/${total} 題`;
         stem.textContent  = prompt;
         opts.innerHTML = "";
-        const options = choiceOptions(pool, correct, 4);
+
+        const options = choiceOptions(pool, correct, rec["詞性"], 4); // ← 新版，多傳詞性
         options.forEach(opt => {
           const btn = document.createElement('button');
           btn.className = 'opt';
@@ -288,11 +309,20 @@
             const ok = String(opt)===String(correct);
             btn.classList.add(ok?'correct':'wrong');
             Array.from(opts.children).forEach(b=> b.disabled=true);
-            if (!ok) allCorrect=false;
-            setTimeout(()=> doOne(qi+1), 650);
+
+            // 答錯即顯示正解
+            if (!ok){
+              const ansDiv = document.createElement('div');
+              ansDiv.style.marginTop = "6px";
+              ansDiv.style.color = "#b91c1c";
+              ansDiv.textContent = `正確答案：${correct}`;
+              opts.appendChild(ansDiv);
+            }
+            setTimeout(()=> doOne(qi+1), 1200);
           };
           opts.appendChild(btn);
         });
+
       };
       doOne(0);
     }
