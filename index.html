@@ -72,9 +72,6 @@
         <button id="btnExportCSV">下載成績 CSV</button>
       </div>
     </div>
-    <div class="muted" style="margin-top:8px">
-      必要欄位：單字、讀音、中文解釋、作答次數、正確次數、正確率。統計存於本機（LocalStorage）。
-    </div>
   </section>
 
   <section id="quiz" class="card">
@@ -304,10 +301,11 @@
           pool = rows.map(x=>({value:String(x["讀音"]), 詞性:x["詞性"]}));
           prompt = `請選出「${rec["單字"]}」的正確讀音：`;
         } else {
-          correct = String(rec["surface"]);
-          pool = rows.map(x=>({value:String(x["surface"]), 詞性:x["詞性"]}));
-          prompt = `請選出「${rec["中文解釋"]}」對應的正確日文：`;
+          correct = String(rec["中文解釋"]);
+          pool = rows.map(x=>String(x["中文解釋"]));
+          prompt = `請選出「${rec["surface"]}」的正確中文解釋：`;
         }
+
 
         qtype.textContent = `題型：${t}`;
         prog.textContent  = `進度：第 ${asked}/${total} 題`;
