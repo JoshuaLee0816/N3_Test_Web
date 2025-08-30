@@ -40,7 +40,6 @@
   <header>
     <div>
       <h1>日文單字測驗（PWA）</h1>
-      <div class="muted">上傳 <code>Vocabulary.xlsx</code> 後即可開始；支援離線、可加入主畫面。</div>
     </div>
     <div class="seg" role="tablist" aria-label="視圖切換">
       <button id="tab-quiz" class="active" aria-selected="true">測驗</button>
@@ -109,7 +108,7 @@
   <script>
     // ====== 全域狀態 ======
     let rows = [];                      // 題庫
-    let asked = 0, total = 21;          // 目標題數
+    let asked = 0, total = 10;          // 目標題數
     let mode = "both";                  // 題型模式
     const ALPHA = 0.8, BETA = 0.6;      // 權重
     const KEY_STATS = "jp_quiz_stats_v1";
@@ -149,7 +148,7 @@
       alert(`已載入 ${rows.length} 筆。`);
     });
 
-    iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||21)); total = v; iptNum.value = v; };
+    iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||10)); total = v; iptNum.value = v; };
     btnStart.onclick = () => {
       asked = 0;
       sessionWrongs = [];          // 重置
@@ -327,25 +326,26 @@
 
             // 答錯即顯示正解
             if (!ok) {
-            // 顯示正解
-            const ansDiv = document.createElement('div');
-            ansDiv.style.marginTop = "6px";
-            ansDiv.style.color = "#b91c1c";
-            ansDiv.textContent = `正確答案：${correct}`;
-            opts.appendChild(ansDiv);
+              allCorrect = false;
+              // 顯示正解
+              const ansDiv = document.createElement('div');
+              ansDiv.style.marginTop = "6px";
+              ansDiv.style.color = "#b91c1c";
+              ansDiv.textContent = `正確答案：${correct}`;
+              opts.appendChild(ansDiv);
 
-            // 只在「答錯」時出現的「下一題」按鈕
-            const nextBtn = document.createElement('button');
-            nextBtn.className = 'opt';          // 讓樣式一致
-            nextBtn.textContent = '下一題';
-            nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
-            opts.appendChild(nextBtn);
+              // 只在「答錯」時出現的「下一題」按鈕
+              const nextBtn = document.createElement('button');
+              nextBtn.className = 'opt';          // 讓樣式一致
+              nextBtn.textContent = '下一題';
+              nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
+              opts.appendChild(nextBtn);
 
-            //  答錯時「不要」自動前進（移除原本的 setTimeout）
-          } else {
-            // 答對維持自動前進
-            setTimeout(() => doOne(qi + 1), 650);
-          }
+              //  答錯時「不要」自動前進（移除原本的 setTimeout）
+            } else {
+              // 答對維持自動前進
+              setTimeout(() => doOne(qi + 1), 650);
+            }
           };
           opts.appendChild(btn);
         });
