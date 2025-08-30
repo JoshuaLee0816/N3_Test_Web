@@ -267,13 +267,22 @@
     }
 
 
+    // 取代整個 presentCard(rec, types)
     function presentCard(rec, types){
-      let allCorrect = true;
+      let allCorrect = true;   // 本題（同一張卡，可能有兩小題）是否全對
 
       const doOne = (qi) => {
+        // ==== 小題都作完：更新統計 &（若有錯）記錄本回合錯題 ====
         if (qi >= types.length){
-          // 如果題有錯，記錄到本回合清單
-          if (!allCorrect) {
+          const s = loadStats();
+          const key = statKey(rec);
+          const ans = (s[key]?.作答次數 ?? rec.作答次數) + 1;
+          const cor = (s[key]?.正確次數 ?? rec.正確次數) + (allCorrect ? 1 : 0);
+          s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans ? (cor/ans*100) : 0 };
+          saveStats(s);
+
+          // 若你有加 sessionWrongs（本回合錯題清單），這裡記錄
+          if (typeof sessionWrongs !== "undefined" && !allCorrect){
             sessionWrongs.push({
               中文解釋: rec["中文解釋"],
               單字: rec["單字"],
@@ -281,76 +290,72 @@
             });
           }
 
-          const s = loadStats();
-          const key = statKey(rec);
-          const ans = (s[key]?.作答次數 ?? rec.作答次數) + 1;
-          const cor = (s[key]?.正確次數 ?? rec.正確次數) + (allCorrect?1:0);
-          s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans? (cor/ans*100):0 };
-          saveStats(s);
-
           setTimeout(nextQuestion, 650);
           return;
         }
 
-
-        const t = types[qi];
+        // ==== 準備本小題 ====
+        const t = types[qi];     // '讀音' 或（你改過的）'日文->中文'
         let correct, pool, prompt;
 
-        if (t==='讀音'){
+        if (t === '讀音'){
+          // 讀音題：顯示漢字，選讀音；選項只從同詞性抽
           correct = String(rec["讀音"]);
-          pool = rows.map(x=>({value:String(x["讀音"]), 詞性:x["詞性"]}));
+          pool = rows.map(x => ({ value: String(x["讀音"]), 詞性: x["詞性"] }));
           prompt = `請選出「${rec["單字"]}」的正確讀音：`;
         } else {
+          // 日文 -> 中文：顯示日文（surface），選中文解釋；選項只從同詞性抽
           correct = String(rec["中文解釋"]);
-          pool = rows.map(x=>String(x["中文解釋"]));
+          pool = rows.map(x => ({ value: String(x["中文解釋"]), 詞性: x["詞性"] }));
           prompt = `請選出「${rec["surface"]}」的正確中文解釋：`;
         }
-
 
         qtype.textContent = `題型：${t}`;
         prog.textContent  = `進度：第 ${asked}/${total} 題`;
         stem.textContent  = prompt;
-        opts.innerHTML = "";
+        opts.innerHTML    = "";
 
-        const options = choiceOptions(pool, correct, rec["詞性"], 4); // ← 新版，多傳詞性
+        // 取得選項（使用已修改過的 choiceOptions(pool, correct, pos, k)）
+        const options = choiceOptions(pool, correct, rec["詞性"], 4);
+
         options.forEach(opt => {
           const btn = document.createElement('button');
           btn.className = 'opt';
           btn.textContent = opt;
-          btn.onclick = () => {
-            const ok = String(opt)===String(correct);
-            btn.classList.add(ok?'correct':'wrong');
-            Array.from(opts.children).forEach(b=> b.disabled=true);
 
-            // 答錯即顯示正解
-            if (!ok) {
+          btn.onclick = () => {
+            const ok = String(opt) === String(correct);
+            btn.classList.add(ok ? 'correct' : 'wrong');
+            Array.from(opts.children).forEach(b => b.disabled = true);
+
+            if (!ok){
+              // 標記本題有錯，顯示正解，並由使用者按「下一題」才前進
               allCorrect = false;
-              // 顯示正解
+
               const ansDiv = document.createElement('div');
               ansDiv.style.marginTop = "6px";
               ansDiv.style.color = "#b91c1c";
               ansDiv.textContent = `正確答案：${correct}`;
               opts.appendChild(ansDiv);
 
-              // 只在「答錯」時出現的「下一題」按鈕
               const nextBtn = document.createElement('button');
-              nextBtn.className = 'opt';          // 讓樣式一致
+              nextBtn.className = 'opt';
               nextBtn.textContent = '下一題';
               nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
               opts.appendChild(nextBtn);
-
-              //  答錯時「不要」自動前進（移除原本的 setTimeout）
             } else {
-              // 答對維持自動前進
+              // 答對仍自動前進
               setTimeout(() => doOne(qi + 1), 650);
             }
           };
+
           opts.appendChild(btn);
         });
-
       };
+
       doOne(0);
     }
+
 
     // ====== 成績檢視 / 匯出 ======
     function mergedStatsRows(){
