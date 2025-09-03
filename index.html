@@ -299,7 +299,7 @@
       presentCard(rec, types);
     }
 
-    function choiceOptions(pool, correct, pos, k=4){
+    function choiceOptions(pool, correct, pos, k=4, level){
       const samePOS = pool.filter(x => x.詞性 === pos && x.Level === level).map(x => x.value); //選項詞性&Level都要相同
       const uniq = [...new Set(samePOS.filter(x=>x && x!==correct))];
       const n = Math.min(k, uniq.length);
