@@ -344,12 +344,12 @@
         if (t === '讀音'){
           // 讀音題：顯示漢字，選讀音；選項只從同詞性抽
           correct = String(rec["讀音"]);
-          pool = rows.map(x => ({ value: String(x["讀音"]), 詞性: x["詞性"] }));
+          pool = rows.map(x => ({ value: String(x["讀音"]), 詞性: x["詞性"], Level: x["Level"]  }));
           prompt = `請選出「${rec["單字"]}」的正確讀音：`;
         } else {
           // 日文 -> 中文：顯示日文（surface），選中文解釋；選項只從同詞性抽
           correct = String(rec["中文解釋"]);
-          pool = rows.map(x => ({ value: String(x["中文解釋"]), 詞性: x["詞性"] }));
+          pool = rows.map(x => ({ value: String(x["中文解釋"]), 詞性: x["詞性"], Level: x["Level"]  }));
           prompt = `請選出「${rec["surface"]}」的正確中文解釋：`;
         }
 
