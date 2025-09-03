@@ -216,7 +216,7 @@
         const ansC = Number(r["作答次數"]||0)|0;
         const corC = Number(r["正確次數"]||0)|0;
         const acc  = Number(r["正確率"]||0);
-        const level = String(r["Level"]||"").trim(); //過濾level
+        const level = String(r["Level"] || r["LEVEL"] || "").trim(); //過濾level
         const pos  = String(r["詞性"]||"").trim();  
         const surface = word.length?word:pron;
 
@@ -414,8 +414,6 @@
 
       doOne(0);
     }
-
-
 
     // ====== 成績檢視 / 匯出 ======
     function mergedStatsRows(){
