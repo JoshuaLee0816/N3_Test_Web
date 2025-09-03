@@ -40,7 +40,6 @@
   <header>
     <div>
       <h1>日文單字測驗（PWA）</h1>
-      <div class="muted">上傳 <code>Vocabulary.xlsx</code> 後即可開始；支援離線、可加入主畫面。</div>
     </div>
     <div class="seg" role="tablist" aria-label="視圖切換">
       <button id="tab-quiz" class="active" aria-selected="true">測驗</button>
@@ -61,8 +60,8 @@
       <div>
         <div class="muted">題型</div>
         <div class="seg">
-          <button id="mode-both" class="active" title="讀音 + 中→日">讀音+中→日</button>
-          <button id="mode-zh2jp" title="只中→日">只中→日</button>
+          <button id="mode-both" class="active" title="讀音 + 中→日">讀音+日→中</button>
+          <button id="mode-zh2jp" title="只中→日">只日→中</button>
           <button id="mode-pron" title="只讀音">只讀音</button>
         </div>
       </div>
@@ -81,9 +80,6 @@
         <button id="btnExportXLSX">下載更新後的 XLSX</button>
         <button id="btnExportCSV">下載成績 CSV</button>
       </div>
-    </div>
-    <div class="muted" style="margin-top:8px">
-      必要欄位：單字、讀音、中文解釋、作答次數、正確次數、正確率。統計存於本機（LocalStorage）。
     </div>
   </section>
 
@@ -120,9 +116,12 @@
     let rows = [];                      // 題庫
     let selectedLevels = [];            // 題目Level
     let asked = 0, total = 21;          // 目標題數
+
     let mode = "both";                  // 題型模式
     const ALPHA = 0.8, BETA = 0.6;      // 權重
     const KEY_STATS = "jp_quiz_stats_v1";
+
+    let sessionWrongs = []; // 本回合錯題清單
 
     function loadStats(){ try{ return JSON.parse(localStorage.getItem(KEY_STATS)||"{}"); }catch{return {}} }
     function saveStats(obj){ localStorage.setItem(KEY_STATS, JSON.stringify(obj)); }
@@ -157,7 +156,7 @@
       alert(`已載入 ${rows.length} 筆。`);
     });
 
-    iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||21)); total = v; iptNum.value = v; };
+    iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||10)); total = v; iptNum.value = v; };
 
     function getSelectedLevels(){
       const levels = [];
@@ -174,11 +173,12 @@
         return;
       }
       asked=0;
+      sessionWrongs = [];          // 重置
+
       nextQuestion();
       switchTab('quiz');
     };
 
-    btnStart.onclick = () => { asked=0; nextQuestion(); switchTab('quiz'); };
     btnReset.onclick = () => { resetStats(); renderStats(); alert("已清除本機成績。"); };
     btnExportCSV.onclick = exportCSV;
     btnExportXLSX.onclick = exportXLSX;
@@ -213,10 +213,22 @@
         const ansC = Number(r["作答次數"]||0)|0;
         const corC = Number(r["正確次數"]||0)|0;
         const acc  = Number(r["正確率"]||0);
-        const surface = word.length?word:pron;
         const level = String(r["Level"]||"").trim(); //過濾level
-        return { 單字:word, 讀音:pron, 中文解釋:zh, 作答次數:ansC, 正確次數:corC, 正確率:acc, surface };
-      }).filter(r=> r.surface && r["中文解釋"]);
+        const pos  = String(r["詞性"]||"").trim();  
+        const surface = word.length?word:pron;
+
+        return { 
+          單字: word, 
+          讀音: pron, 
+          中文解釋: zh, 
+          作答次數: ansC, 
+          正確次數: corC, 
+          正確率: acc, 
+          surface, 
+          詞性: pos, 
+          Level: level 
+        };
+      }).filter(r => r.surface && r["中文解釋"]);
 
       // 若使用者有選擇等級，才過濾
       if (selectedLevels.length > 0){
@@ -251,7 +263,18 @@
     // ====== 出題流程 ======
     function nextQuestion(){
       if (!rows.length){ stem.textContent = "請先載入題庫"; return; }
-      if (asked >= total){ stem.textContent = "測驗結束。請到『成績』查看統計。"; opts.innerHTML=""; return; }
+      if (asked >= total){
+        stem.textContent = sessionWrongs.length
+          ? "測驗結束。以下是本回合的錯題回顧："
+          : "測驗結束。本回合全對！";
+        opts.innerHTML = sessionWrongs.map(r =>
+          `<div style="margin:6px 0; padding:6px; border:1px solid #eee; border-radius:8px">
+            <b>${escapeHtml(r.中文解釋)}</b> → ${escapeHtml(r.單字 || "")}${r.讀音 ? `（${escapeHtml(r.讀音)}）` : ""}
+          </div>`
+        ).join("");
+        return;
+      }
+
 
       const cands = rows.filter(r=> r.surface && r["中文解釋"]);
       if (!cands.length){ stem.textContent = "題庫為空"; opts.innerHTML=""; return; }
@@ -267,14 +290,15 @@
       if (mode==='both' || mode==='pron'){
         if (hasKanji(rec["單字"]) && rec["讀音"]) types.push('讀音');
       }
-      if (mode==='both' || mode==='zh2jp') types.push('中文->日文');
+      if (mode==='both' || mode==='zh2jp') types.push('日文->中文');
 
       asked++;
       presentCard(rec, types);
     }
 
-    function choiceOptions(pool, correct, k=4){
-      const uniq = [...new Set(pool.filter(x=>x && x!==correct))];
+    function choiceOptions(pool, correct, pos, k=4){
+      const samePOS = pool.filter(x => x.詞性 === pos).map(x => x.value);
+      const uniq = [...new Set(samePOS.filter(x=>x && x!==correct))];
       const n = Math.min(k, uniq.length);
       const wrongs = [];
       while (wrongs.length < n){
@@ -284,54 +308,94 @@
       return [...wrongs, correct].sort(()=>Math.random()-0.5);
     }
 
+
     function presentCard(rec, types){
-      let allCorrect = true;
+      let allCorrect = true;   // 本題是否全對
 
       const doOne = (qi) => {
+        // ==== 小題都作完：更新統計 &（若有錯）記錄本回合錯題 ====
         if (qi >= types.length){
           const s = loadStats();
           const key = statKey(rec);
           const ans = (s[key]?.作答次數 ?? rec.作答次數) + 1;
-          const cor = (s[key]?.正確次數 ?? rec.正確次數) + (allCorrect?1:0);
-          s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans? (cor/ans*100):0 };
+          const cor = (s[key]?.正確次數 ?? rec.正確次數) + (allCorrect ? 1 : 0);
+          s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans ? (cor/ans*100) : 0 };
           saveStats(s);
+
+          if (typeof sessionWrongs !== "undefined" && !allCorrect){
+            sessionWrongs.push({
+              中文解釋: rec["中文解釋"],
+              單字: rec["單字"],
+              讀音: rec["讀音"]
+            });
+          }
+
           setTimeout(nextQuestion, 650);
           return;
         }
 
-        const t = types[qi];
+        // ==== 準備本小題 ====
+        const t = types[qi];     // '讀音' 或（你改過的）'日文->中文'
         let correct, pool, prompt;
-        if (t==='讀音'){
+
+        if (t === '讀音'){
+          // 讀音題：顯示漢字，選讀音；選項只從同詞性抽
           correct = String(rec["讀音"]);
-          pool = rows.map(x=>String(x["讀音"]));
+          pool = rows.map(x => ({ value: String(x["讀音"]), 詞性: x["詞性"] }));
           prompt = `請選出「${rec["單字"]}」的正確讀音：`;
         } else {
-          correct = String(rec["surface"]);
-          pool = rows.map(x=>String(x["surface"]));
-          prompt = `請選出「${rec["中文解釋"]}」對應的正確日文：`;
+          // 日文 -> 中文：顯示日文（surface），選中文解釋；選項只從同詞性抽
+          correct = String(rec["中文解釋"]);
+          pool = rows.map(x => ({ value: String(x["中文解釋"]), 詞性: x["詞性"] }));
+          prompt = `請選出「${rec["surface"]}」的正確中文解釋：`;
         }
 
         qtype.textContent = `題型：${t}`;
         prog.textContent  = `進度：第 ${asked}/${total} 題`;
         stem.textContent  = prompt;
-        opts.innerHTML = "";
-        const options = choiceOptions(pool, correct, 4);
+        opts.innerHTML    = "";
+
+        // 取得選項
+        const options = choiceOptions(pool, correct, rec["詞性"], 4);
+
         options.forEach(opt => {
           const btn = document.createElement('button');
           btn.className = 'opt';
           btn.textContent = opt;
+
           btn.onclick = () => {
-            const ok = String(opt)===String(correct);
-            btn.classList.add(ok?'correct':'wrong');
-            Array.from(opts.children).forEach(b=> b.disabled=true);
-            if (!ok) allCorrect=false;
-            setTimeout(()=> doOne(qi+1), 650);
+            const ok = String(opt) === String(correct);
+            btn.classList.add(ok ? 'correct' : 'wrong');
+            Array.from(opts.children).forEach(b => b.disabled = true);
+
+            if (!ok){
+              // 標記本題有錯，顯示正解，並由使用者按下一題才前進
+              allCorrect = false;
+
+              const ansDiv = document.createElement('div');
+              ansDiv.style.marginTop = "6px";
+              ansDiv.style.color = "#b91c1c";
+              ansDiv.textContent = `正確答案：${correct}`;
+              opts.appendChild(ansDiv);
+
+              const nextBtn = document.createElement('button');
+              nextBtn.className = 'opt';
+              nextBtn.textContent = '下一題';
+              nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
+              opts.appendChild(nextBtn);
+            } else {
+              // 答對仍自動前進
+              setTimeout(() => doOne(qi + 1), 650);
+            }
           };
+
           opts.appendChild(btn);
         });
       };
+
       doOne(0);
     }
+
 
     // ====== 成績檢視 / 匯出 ======
     function mergedStatsRows(){
