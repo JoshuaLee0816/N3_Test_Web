@@ -66,6 +66,15 @@
           <button id="mode-pron" title="只讀音">只讀音</button>
         </div>
       </div>
+      <div>
+        <div class="muted">考試等級</div>
+        <div class="row" style="gap:8px">
+          <label><input type="checkbox" id="levelN5" value="N5"> N5</label>
+          <label><input type="checkbox" id="levelN4" value="N4"> N4</label>
+          <label><input type="checkbox" id="levelN3" value="N3"> N3</label>
+        </div>
+      </div>
+
       <div class="row">
         <button id="btnStart" class="primary" disabled>開始測驗</button>
         <button id="btnReset" class="danger">清除本機成績</button>
@@ -109,6 +118,7 @@
   <script>
     // ====== 全域狀態 ======
     let rows = [];                      // 題庫
+    let selectedLevels = [];            // 題目Level
     let asked = 0, total = 21;          // 目標題數
     let mode = "both";                  // 題型模式
     const ALPHA = 0.8, BETA = 0.6;      // 權重
@@ -148,6 +158,26 @@
     });
 
     iptNum.oninput = () => { const v = Math.max(1, Math.min(200, Number(iptNum.value)||21)); total = v; iptNum.value = v; };
+
+    function getSelectedLevels(){
+      const levels = [];
+      if (document.getElementById("levelN5").checked) levels.push("N5");
+      if (document.getElementById("levelN4").checked) levels.push("N4");
+      if (document.getElementById("levelN3").checked) levels.push("N3");
+      return levels;
+    }
+
+    btnStart.onclick = () => {
+      selectedLevels = getSelectedLevels();
+      if (selectedLevels.length === 0){
+        alert("請至少選擇一個等級");
+        return;
+      }
+      asked=0;
+      nextQuestion();
+      switchTab('quiz');
+    };
+
     btnStart.onclick = () => { asked=0; nextQuestion(); switchTab('quiz'); };
     btnReset.onclick = () => { resetStats(); renderStats(); alert("已清除本機成績。"); };
     btnExportCSV.onclick = exportCSV;
@@ -184,8 +214,14 @@
         const corC = Number(r["正確次數"]||0)|0;
         const acc  = Number(r["正確率"]||0);
         const surface = word.length?word:pron;
+        const level = String(r["Level"]||"").trim(); //過濾level
         return { 單字:word, 讀音:pron, 中文解釋:zh, 作答次數:ansC, 正確次數:corC, 正確率:acc, surface };
       }).filter(r=> r.surface && r["中文解釋"]);
+
+      // 若使用者有選擇等級，才過濾
+      if (selectedLevels.length > 0){
+        rows = rows.filter(r => selectedLevels.includes(r.Level));
+      }
     }
 
     function hasKanji(s){ return /[\u4E00-\u9FFF]/.test(s||""); }

@@ -1,0 +1,9 @@
+{
+  "name": "日文單字測驗",
+  "short_name": "JP Quiz",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0ea5e9",
+  "theme_color": "#0ea5e9",
+  "icons": []
+}
