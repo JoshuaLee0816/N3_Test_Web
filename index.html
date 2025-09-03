@@ -116,7 +116,7 @@
     let allRows = [];                   // 所有題目
     let rows = [];                      // 過濾題庫(拿來出題)
     let selectedLevels = [];            // 題目Level
-    let asked = 0, total = 21;          // 目標題數
+    let asked = 0, total = Number(document.getElementById('numQ').value) || 10; //目標題數
 
     let mode = "both";                  // 題型模式
     const ALPHA = 0.8, BETA = 0.6;      // 權重
@@ -169,6 +169,8 @@
     }
 
     btnStart.onclick = () => {
+      total = Number(document.getElementById('numQ').value) || 10;
+      asked = 0;
       selectedLevels = getSelectedLevels();
       if (selectedLevels.length === 0){
         alert("請至少選擇一個等級");
