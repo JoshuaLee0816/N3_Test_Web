@@ -300,23 +300,36 @@
     }
 
     function choiceOptions(pool, correct, pos, k=4, level){
-      const samePOS = pool.filter(x => x.詞性 === pos && x.Level === level).map(x => x.value); //選項詞性&Level都要相同
-      const uniq = [...new Set(samePOS.filter(x=>x && x!==correct))];
+      // 選項必須同詞性 & 同 Level
+      const samePOS = pool.filter(x => x.詞性 === pos && x.Level === level).map(x => x.value);
+      const uniq = [...new Set(samePOS.filter(x => x && x !== correct))];
       const n = Math.min(k, uniq.length);
       const wrongs = [];
       while (wrongs.length < n){
-        const x = uniq[Math.floor(Math.random()*uniq.length)];
+        const x = uniq[Math.floor(Math.random() * uniq.length)];
         if (!wrongs.includes(x)) wrongs.push(x);
       }
-      return [...wrongs, correct].sort(()=>Math.random()-0.5);
+      return [...wrongs, correct].sort(() => Math.random() - 0.5);
     }
 
+
+    function choiceOptions(pool, correct, pos, k=4, level){
+  // 選項必須同詞性 & 同 Level
+  const samePOS = pool.filter(x => x.詞性 === pos && x.Level === level).map(x => x.value);
+  const uniq = [...new Set(samePOS.filter(x => x && x !== correct))];
+  const n = Math.min(k, uniq.length);
+  const wrongs = [];
+  while (wrongs.length < n){
+    const x = uniq[Math.floor(Math.random() * uniq.length)];
+    if (!wrongs.includes(x)) wrongs.push(x);
+  }
+  return [...wrongs, correct].sort(() => Math.random() - 0.5);
+}
 
     function presentCard(rec, types){
       let allCorrect = true;   // 本題是否全對
 
       const doOne = (qi) => {
-        // ==== 小題都作完：更新統計 &（若有錯）記錄本回合錯題 ====
         if (qi >= types.length){
           const s = loadStats();
           const key = statKey(rec);
@@ -325,7 +338,7 @@
           s[key] = { 作答次數: ans, 正確次數: cor, 正確率: ans ? (cor/ans*100) : 0 };
           saveStats(s);
 
-          if (typeof sessionWrongs !== "undefined" && !allCorrect){
+          if (!allCorrect){
             sessionWrongs.push({
               中文解釋: rec["中文解釋"],
               單字: rec["單字"],
@@ -338,18 +351,24 @@
         }
 
         // ==== 準備本小題 ====
-        const t = types[qi];     // '讀音' 或（你改過的）'日文->中文'
+        const t = types[qi];
         let correct, pool, prompt;
 
         if (t === '讀音'){
-          // 讀音題：顯示漢字，選讀音；選項只從同詞性抽
           correct = String(rec["讀音"]);
-          pool = rows.map(x => ({ value: String(x["讀音"]), 詞性: x["詞性"], Level: x["Level"]  }));
+          pool = rows.map(x => ({
+            value: String(x["讀音"]),
+            詞性: x["詞性"],
+            Level: x["Level"]
+          }));
           prompt = `請選出「${rec["單字"]}」的正確讀音：`;
         } else {
-          // 日文 -> 中文：顯示日文（surface），選中文解釋；選項只從同詞性抽
           correct = String(rec["中文解釋"]);
-          pool = rows.map(x => ({ value: String(x["中文解釋"]), 詞性: x["詞性"], Level: x["Level"]  }));
+          pool = rows.map(x => ({
+            value: String(x["中文解釋"]),
+            詞性: x["詞性"],
+            Level: x["Level"]
+          }));
           prompt = `請選出「${rec["surface"]}」的正確中文解釋：`;
         }
 
@@ -358,7 +377,7 @@
         stem.textContent  = prompt;
         opts.innerHTML    = "";
 
-        // 取得選項
+        // 取得選項（同詞性 & 同 Level）
         const options = choiceOptions(pool, correct, rec["詞性"], 4, rec["Level"]);
 
         options.forEach(opt => {
@@ -372,9 +391,7 @@
             Array.from(opts.children).forEach(b => b.disabled = true);
 
             if (!ok){
-              // 標記本題有錯，顯示正解，並由使用者按下一題才前進
               allCorrect = false;
-
               const ansDiv = document.createElement('div');
               ansDiv.style.marginTop = "6px";
               ansDiv.style.color = "#b91c1c";
@@ -387,7 +404,6 @@
               nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
               opts.appendChild(nextBtn);
             } else {
-              // 答對仍自動前進
               setTimeout(() => doOne(qi + 1), 650);
             }
           };
@@ -398,6 +414,7 @@
 
       doOne(0);
     }
+
 
 
     // ====== 成績檢視 / 匯出 ======
