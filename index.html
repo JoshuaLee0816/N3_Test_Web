@@ -126,6 +126,7 @@
     let allRows = [];                   // 所有題目
     let rows = [];                      // 過濾題庫(拿來出題)
     let selectedLevels = [];            // 題目Level
+    let selectedPOS = [];               // 題目詞性
     let asked = 0, total = Number(document.getElementById('numQ').value) || 10; //目標題數
 
     let mode = "both";                  // 題型模式
@@ -280,6 +281,11 @@
           });
         });
       }
+      console.log("rows 原始數量", allRows.length);
+      console.log("選到的等級", selectedLevels);
+      console.log("選到的詞性", selectedPOS);
+      console.log("過濾後數量", rows.length);
+
     }
 
     function hasKanji(s){ return /[\u4E00-\u9FFF]/.test(s||""); }
