@@ -73,6 +73,16 @@
           <label><input type="checkbox" id="levelN3" value="N3"> N3</label>
         </div>
       </div>
+      <div>
+      <div class="muted">詞性分級</div>
+        <div class="row" style="gap:8px">
+          <label><input type="checkbox" id="posN" value="N"> N</label>
+          <label><input type="checkbox" id="posV" value="V"> V</label>
+          <label><input type="checkbox" id="posAdjAdv" value="Adj_Adv"> Adj/Adv</label>
+          <label><input type="checkbox" id="posKana" value="片仮名"> 片仮名</label>
+          <label><input type="checkbox" id="posGreeting" value="挨拶語"> 挨拶語</label>
+        </div>
+      </div>
 
       <div class="row">
         <button id="btnStart" class="primary" disabled>開始測驗</button>
@@ -168,18 +178,30 @@
       return levels;
     }
 
+    function getSelectedPOS(){
+      const pos = [];
+      if (document.getElementById("posN").checked) pos.push("N");
+      if (document.getElementById("posV").checked) pos.push("V");
+      if (document.getElementById("posAdjAdv").checked) pos.push("Adj_Adv");
+      if (document.getElementById("posKana").checked) pos.push("片仮名");
+      if (document.getElementById("posGreeting").checked) pos.push("挨拶語");
+      return pos;
+    }
+
+
     btnStart.onclick = () => {
       total = Number(document.getElementById('numQ').value) || 10;
       asked = 0;
       selectedLevels = getSelectedLevels();
-      if (selectedLevels.length === 0){
-        alert("請至少選擇一個等級");
-        return;
+      selectedPOS = getSelectedPOS();
+
+      // 如果等級與詞性都沒選，預設為「全部都可以考」
+      if (selectedLevels.length === 0 && selectedPOS.length === 0){
+        alert("未選擇等級或詞性，將預設全部題目。");
       }
       normalizeRows();   // 重新依照等級過濾
       asked=0;
       sessionWrongs = [];          // 重置
-
       nextQuestion();
       switchTab('quiz');
     };
@@ -238,6 +260,25 @@
       // 若使用者有選擇等級，才過濾
       if (selectedLevels.length > 0){
         rows = rows.filter(r => selectedLevels.includes(r.Level));
+      }
+
+      // 過濾 詞性
+      if (selectedPOS.length > 0){
+        rows = rows.filter(r => {
+          return selectedPOS.some(sel => {
+            const pos = r["詞性"];
+            if (sel === "N") {
+              // N 開頭但不是 Na-adj
+              return pos.startsWith("N") && !pos.startsWith("Na");
+            } else if (sel === "Adj_Adv") {
+              // Adj、Adv、Na-adj 都算在一起
+              return pos === "Adj" || pos === "Adv" || pos === "Na-adj";
+            } else {
+              // 其他精確比對
+              return pos === sel;
+            }
+          });
+        });
       }
     }
 
