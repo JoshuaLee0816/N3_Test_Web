@@ -111,9 +111,14 @@
         <input type="file" id="file" accept=".xlsx,.xls" />
       </div>
       <div>
-        <div class="muted">題數</div>
-        <input type="number" id="numQ" min="1" max="200" value="10">
+      <div class="muted">題數</div>
+        <div class="num-input">
+          <button type="button" onclick="changeNum(-1)">－</button>
+          <input type="number" id="numQ" min="1" max="200" value="10">
+          <button type="button" onclick="changeNum(1)">＋</button>
+        </div>
       </div>
+
       <div>
         <div class="muted">題型</div>
         <div class="seg">
