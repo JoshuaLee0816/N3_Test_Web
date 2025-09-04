@@ -249,6 +249,11 @@
       normalizeRows();   // 重新依照等級過濾
       asked=0;
       sessionWrongs = [];          // 重置
+
+      // 隱藏控制區和上方 header
+      document.getElementById('controls').classList.add('hidden');
+      document.querySelector('header').classList.add('hidden');
+
       nextQuestion();
       switchTab('quiz');
     };
