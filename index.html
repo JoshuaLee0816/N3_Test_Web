@@ -41,7 +41,28 @@
     height: 100px; /* 可以依需求調整 */
   }
 
-  .opt.correct { border-color:var(--ok); background:#ecfdf5; }
+  /* 固定在底部的「下一題」按鈕 不然手機板用起來不舒服*/
+  #next-btn-fixed {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: calc(100% - 40px);
+    max-width: 400px;
+    padding: 20px;
+    font-size: 18px;
+    border: 2px solid var(--bd);
+    border-radius: 16px;
+    background: #fff;
+  }
+
+  .opt.correct {
+    border-color: var(--ok);
+    background: #ecfdf5;
+    color: #000;           /* 黑色字 */
+    font-weight: bold;     /* 粗體 */
+  }
   .opt.wrong { border-color:var(--bad); background:#fef2f2; }
 
   .seg { display:inline-flex; border:1px solid var(--bd); border-radius:12px; overflow:hidden }
@@ -466,17 +487,19 @@
 
             if (!ok){
               allCorrect = false;
-              const ansDiv = document.createElement('div');
-              ansDiv.style.marginTop = "6px";
-              ansDiv.style.color = "#b91c1c";
-              ansDiv.textContent = `正確答案：${correct}`;
-              opts.appendChild(ansDiv);
+              // 直接把正確選項加上 .correct 樣式
+              Array.from(opts.children).forEach(b => {
+                if (b.textContent === String(correct)) {
+                  b.classList.add('correct');
+                }
+              });
 
+              // 顯示「下一題」按鈕（固定在底部）
               const nextBtn = document.createElement('button');
-              nextBtn.className = 'opt';
+              nextBtn.id = 'next-btn-fixed';
               nextBtn.textContent = '下一題';
-              nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); };
-              opts.appendChild(nextBtn);
+              nextBtn.onclick = () => { nextBtn.disabled = true; doOne(qi + 1); nextBtn.remove(); };
+              document.body.appendChild(nextBtn);
             } else {
               setTimeout(() => doOne(qi + 1), 650);
             }
