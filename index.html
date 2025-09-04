@@ -65,6 +65,17 @@
   }
   .opt.wrong { border-color:var(--bad); background:#fef2f2; }
 
+  #end-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  justify-content: center;
+  }
+  #end-actions button {
+    flex: 1;
+    max-width: 200px;
+  }
+
   .seg { display:inline-flex; border:1px solid var(--bd); border-radius:12px; overflow:hidden }
   .seg button { border:0; padding:8px 12px; }
   .seg button.active { background:#eef6ff; border-color:#bfdbfe }
@@ -146,6 +157,7 @@
     </div>
     <div id="qstem" style="font-size:20px; font-weight:700; margin-bottom:8px">請先載入題庫</div>
     <div id="opts"></div>
+    <div id="end-actions" class="hidden"></div>
   </section>
 
   <section id="stats" class="card hidden" aria-live="polite">
@@ -370,13 +382,43 @@
         stem.textContent = sessionWrongs.length
           ? "測驗結束。以下是本回合的錯題回顧："
           : "測驗結束。本回合全對！";
-        opts.innerHTML = sessionWrongs.map(r =>
+
+        // 錯題回顧放在 opts
+        const reviewHTML = sessionWrongs.map(r =>
           `<div style="margin:6px 0; padding:6px; border:1px solid #eee; border-radius:8px">
             <b>${escapeHtml(r.中文解釋)}</b> → ${escapeHtml(r.單字 || "")}${r.讀音 ? `（${escapeHtml(r.讀音)}）` : ""}
           </div>`
         ).join("");
+        opts.innerHTML = reviewHTML;
+
+        // 顯示底部的按鈕區
+        const endActions = document.getElementById('end-actions');
+        endActions.innerHTML = `
+          <button class="opt" id="btnRestart">重新開始</button>
+          <button class="opt" id="btnResetConfig">重新設定</button>
+        `;
+        endActions.classList.remove('hidden');
+
+        // 綁定事件
+        document.getElementById('btnRestart').onclick = () => {
+          asked = 0;
+          sessionWrongs = [];
+          endActions.classList.add('hidden');
+          nextQuestion();
+        };
+        document.getElementById('btnResetConfig').onclick = () => {
+          document.getElementById('controls').classList.remove('hidden');
+          document.querySelector('header').classList.remove('hidden');
+          stem.textContent = "請先載入題庫";
+          opts.innerHTML = "";
+          endActions.classList.add('hidden');
+        };
+
         return;
       }
+
+
+
 
 
       const cands = rows.filter(r=> r.surface && r["中文解釋"]);
