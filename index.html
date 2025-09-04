@@ -7,34 +7,59 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0ea5e9">
   <style>
-    :root { --bg:#0ea5e9; --fg:#0b1324; --muted:#6b7280; --card:#ffffff; --bd:#e5e7eb; --ok:#22c55e; --bad:#ef4444; }
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "Helvetica Neue", Arial; margin: 0 auto; max-width: 880px; padding: 16px; background:#f8fafc; color:var(--fg); }
-    header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-    h1 { font-size: 20px; margin: 8px 0; }
-    .muted { color: var(--muted); font-size: 12px; }
-    .card { border:1px solid var(--bd); border-radius:14px; padding:16px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.05); margin-top:12px;}
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center }
-    input[type="number"] { width: 90px; padding:8px 10px; border-radius:10px; border:1px solid var(--bd); }
-    input[type="file"] { padding:6px 0; }
-    button { padding:10px 14px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer }
-    button.primary { background:var(--bg); color:#fff; border-color:var(--bg) }
-    button.danger { background:#fff0f0; color:#b91c1c; border-color:#fecaca }
-    button:disabled { opacity:.55; cursor:not-allowed }
-    .opt { display:block; padding:12px 14px; border:1px solid var(--bd); border-radius:12px; margin:10px 0; background:#fff; }
-    .opt.correct { border-color:var(--ok); background:#ecfdf5; }
-    .opt.wrong { border-color:var(--bad); background:#fef2f2; }
-    .seg { display:inline-flex; border:1px solid var(--bd); border-radius:12px; overflow:hidden }
-    .seg button { border:0; padding:8px 12px; }
-    .seg button.active { background:#eef6ff; border-color:#bfdbfe }
-    table { width:100%; border-collapse: collapse; }
-    th, td { padding:8px 10px; border-bottom:1px solid var(--bd); text-align:left; font-size:14px }
-    th { background:#f3f4f6; }
-    .hidden { display:none !important; }
-    .pill { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--bd); background:#fff }
-    .right { text-align:right }
-    @media (hover:hover) { .opt:hover { transform: translateY(-1px); transition: .15s; } }
-  </style>
+  :root { --bg:#0ea5e9; --fg:#0b1324; --muted:#6b7280; --card:#ffffff; --bd:#e5e7eb; --ok:#22c55e; --bad:#ef4444; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "Helvetica Neue", Arial; margin: 0 auto; max-width: 880px; padding: 16px; background:#f8fafc; color:var(--fg); }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  h1 { font-size: 20px; margin: 8px 0; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .card { border:1px solid var(--bd); border-radius:14px; padding:16px; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.05); margin-top:12px;}
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center }
+  input[type="number"] { width: 90px; padding:8px 10px; border-radius:10px; border:1px solid var(--bd); }
+  input[type="file"] { padding:6px 0; }
+  button { padding:10px 14px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer }
+  button.primary { background:var(--bg); color:#fff; border-color:var(--bg) }
+  button.danger { background:#fff0f0; color:#b91c1c; border-color:#fecaca }
+  button:disabled { opacity:.55; cursor:not-allowed }
+
+  /* ==== 新增：選項改成自適應格子佈局 ==== */
+  #opts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  button.opt {
+    padding: 20px;
+    font-size: 18px;
+    text-align: center;
+    border: 2px solid var(--bd);
+    border-radius: 16px;
+    background: #fff;
+    cursor: pointer;
+    width: 100%;
+    height: 100px; /* 可以依需求調整 */
+  }
+
+  .opt.correct { border-color:var(--ok); background:#ecfdf5; }
+  .opt.wrong { border-color:var(--bad); background:#fef2f2; }
+
+  .seg { display:inline-flex; border:1px solid var(--bd); border-radius:12px; overflow:hidden }
+  .seg button { border:0; padding:8px 12px; }
+  .seg button.active { background:#eef6ff; border-color:#bfdbfe }
+  table { width:100%; border-collapse: collapse; }
+  th, td { padding:8px 10px; border-bottom:1px solid var(--bd); text-align:left; font-size:14px }
+  th { background:#f3f4f6; }
+  .hidden { display:none !important; }
+  .pill { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--bd); background:#fff }
+  .right { text-align:right }
+
+  /* hover 效果 */
+  @media (hover:hover) { 
+    button.opt:hover { transform: scale(1.05); transition: transform 0.15s; }
+  }
+</style>
+
 </head>
 <body>
   <header>
