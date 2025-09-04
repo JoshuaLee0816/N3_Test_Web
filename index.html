@@ -21,6 +21,26 @@
   button.primary { background:var(--bg); color:#fff; border-color:var(--bg) }
   button.danger { background:#fff0f0; color:#b91c1c; border-color:#fecaca }
   button:disabled { opacity:.55; cursor:not-allowed }
+  .num-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .num-input input {
+    width: 70px;
+    text-align: center;
+    padding: 6px;
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+  }
+  .num-input button {
+    padding: 6px 12px;
+    border: 1px solid var(--bd);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+  }
+
 
   /* ==== 新增：選項改成自適應格子佈局 ==== */
   #opts {
@@ -301,6 +321,14 @@
     }
 
     // ====== 資料處理 ======
+    function changeNum(delta){
+      const ipt = document.getElementById('numQ');
+      let v = Number(ipt.value) || 0;
+      v = Math.max(Number(ipt.min), Math.min(Number(ipt.max), v + delta));
+      ipt.value = v;
+      total = v; // 讓題數同步到你的程式用的 total
+    }
+
     function normalizeRows(){
       rows = allRows.map(r=>{
         const word = String(r["單字"]||"").trim();
